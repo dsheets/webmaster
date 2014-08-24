@@ -24,7 +24,7 @@ let webmaster_resolve    = unit ~deps:[uri; netstring] "webmaster_resolve" cli
 let webmaster_relativize = unit "webmaster_relativize" cli
 
 let webmaster_cli_lib =
-  lib "webmaster.cli" ~deps:[webmaster_lib]
+  lib "cli" ~deps:[webmaster_lib]
     (`Units [
       webmaster_cli;
       webmaster_file;
