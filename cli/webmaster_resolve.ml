@@ -43,5 +43,5 @@ let resolve_file ~base ~root ~has_host in_file out_file = Urlfun.(
 
 let resolve ({ force }) base root has_host (_olinks,output) (_plinks,path) =
   let cmd = "resolve" in
-  let process = resolve_file ~base ~root ~has_host in
+  let process _file = resolve_file ~base ~root ~has_host in
   output_of_input ~force ~cmd process path output

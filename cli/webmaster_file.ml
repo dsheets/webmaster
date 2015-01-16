@@ -63,54 +63,76 @@ let in_dir path f =
   try let r = f () in Unix.chdir cwd; r
   with e -> Unix.chdir cwd; raise e
 
-let rec ensure_directory_exists ~model_path path =
-  try Unix.access path []  
+let rec ensure_directory_exists ~perm path =
+  try Unix.access path []
+  with Unix.Unix_error (Unix.ENOENT, _, _) ->
+    let dir = Filename.dirname path in
+    ensure_directory_exists ~perm dir;
+    Unix.(mkdir path perm)
+
+let rec ensure_model_directory_exists ~model_path path =
+  try Unix.access path []
   with Unix.Unix_error (Unix.ENOENT, _, _) ->
     let model_dir = Filename.dirname model_path in
     let dir = Filename.dirname path in
-    ensure_directory_exists ~model_path:model_dir dir;
+    ensure_model_directory_exists ~model_path:model_dir dir;
     Unix.(mkdir path ((stat model_path).st_perm))
 
-let pairs ~force path output =
+let transforms ~force path output =
   let dh = Unix.opendir path in
   let files = in_dir path (fun () -> all_files "" [] dh) in
   let () = Unix.closedir dh in
-  let pairs  = List.rev_map (fun file -> path / file, output / file) files in
-  if force then Some pairs
+  let transforms  = List.rev_map (fun file ->
+    file, path / file, output / file
+  ) files in
+  if force then Some transforms
   else
-    let error = List.fold_left (fun error (_,out) ->
+    let error = List.fold_left (fun error (_,_,out) ->
       try Unix.access out [];
           eprintf "destination %s exists\n" out;
           true
       with Unix.Unix_error (Unix.ENOENT, _, _) -> error
-    ) false pairs in
-    if error then None else Some pairs
+    ) false transforms in
+    if error then None else Some transforms
 
 let check ~cmd warnings =
   if warnings
   then eprintf "%s completed successfully with some warnings\n%!" cmd
 
 let map_directory ~force ~cmd process path output =
-  match pairs ~force path output with
-  | Some pairs ->
-    let warnings = List.fold_left (fun warnings (in_file, out_file) ->
+  match transforms ~force path output with
+  | Some transforms ->
+    let warnings = List.fold_left (fun warnings (file, in_file, out_file) ->
       let in_dir = Filename.dirname in_file in
       let out_dir = Filename.dirname out_file in
-      ensure_directory_exists ~model_path:in_dir out_dir;
-      process in_file out_file || warnings
-    ) false pairs in
+      ensure_model_directory_exists ~model_path:in_dir out_dir;
+      process file in_file out_file || warnings
+    ) false transforms in
     `Ok (check ~cmd warnings)
   | None -> `Error (false, "some files would be overwritten")
 
+let output_type path output = match path, output with
+  | `Missing _, _ -> None
+  | `File path, (`Missing output | `File output) -> Some (`File output)
+  | `File path, `Dir output ->
+    let file = Filename.basename path in
+    Some (`File (Filename.concat output file))
+  | `Dir  path, `File output -> None
+  | `Dir  path, (`Dir output | `Missing output) -> Some (`Dir output)
+
 let output_of_input ~force ~cmd process path output = match path, output with
   | `Missing _, _ -> failwith "impossible :-("
-  | `File path, `Missing output -> `Ok (check ~cmd (process path output))
+  | `File path, `Missing output ->
+    let file = Filename.basename path in
+    `Ok (check ~cmd (process file path output))
   | `File path, `File output when force ->
-    `Ok (check ~cmd (process path output))
+    let file = Filename.basename path in
+    `Ok (check ~cmd (process file path output))
   | `File path, `File output ->
     `Error (false, "destination "^output^" exists")
   | `File path, `Dir output ->
-    `Ok (check ~cmd (process path Filename.(concat output (basename path))))
+    let file = Filename.basename path in
+    `Ok (check ~cmd (process file path (Filename.concat output file)))
   | `Dir  path, `File output ->
     `Error (false, "cannot process directory into file")
   | `Dir  path, `Dir output -> map_directory ~force ~cmd process path output

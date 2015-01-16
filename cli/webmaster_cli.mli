@@ -15,6 +15,10 @@
  *
  *)
 
+type path_arg =
+  string option Cmdliner.Arg.converter -> string option -> Cmdliner.Arg.info
+  -> string option Cmdliner.Arg.t
+
 type 'a ret = [
 | `Error of bool * string
 | `Help of [ `Groff | `Pager | `Plain ] * string option
@@ -30,6 +34,12 @@ type common = {
 val global_option_section : string
 
 val root : string list Cmdliner.Term.t
+
+(*val paths :
+  doc:string -> must_exist:bool -> int ->
+  (string list * resource) list Cmdliner.Term.t*)
+val path_arg : doc:string -> ?must_exist:bool -> ?default:string
+  -> path_arg -> string list -> (string list * resource) Cmdliner.Term.t
 
 val path : doc:string -> int -> (string list * resource) Cmdliner.Term.t
 val output : (string list * resource) Cmdliner.Term.t

@@ -17,8 +17,7 @@
 
 open Cmdliner
 
-type path_arg =
-  string option Arg.converter -> string option -> Arg.info -> string option Arg.t
+type 'a arg = 'a Arg.converter -> 'a -> Arg.info -> 'a Arg.t
 
 type 'a ret = [
 | `Error of bool * string
@@ -77,10 +76,10 @@ let rec to_path ~must_exist path = Unix.(
     else `Ok (`Missing path)
 )
 
-let path_arg ~doc ?(must_exist=true) ?default arg names =
+let path_arg ~doc ?(must_exist=true) arg names =
   Arg.(map resource_of_path (ret_map (to_path ~must_exist) (required (
     let docv = "PATH" in
-    arg (some (if must_exist then file else string)) default
+    arg (some (if must_exist then file else string)) None
     & info ~docv ~doc names
   ))))
 

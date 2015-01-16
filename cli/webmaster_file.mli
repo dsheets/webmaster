@@ -24,14 +24,20 @@ val read_files : string list -> Unix.dir_handle -> string list
 
 val in_dir : string -> (unit -> 'a) -> 'a
 
-val ensure_directory_exists : model_path:string -> string -> unit
+val ensure_directory_exists : perm:int -> string -> unit
 
-val pairs : force:bool -> string -> string -> (string * string) list option
+val ensure_model_directory_exists : model_path:string -> string -> unit
+
+val transforms :
+  force:bool -> string -> string -> (string * string * string) list option
 
 val check : cmd:string -> bool -> unit
 
 open Webmaster_cli
 
+val output_type :
+  resource -> resource -> [ `File of string | `Dir of string ] option
+
 val output_of_input :
-  force:bool -> cmd:string -> (string -> string -> bool)
+  force:bool -> cmd:string -> (string -> string -> string -> bool)
   -> resource -> resource -> unit ret

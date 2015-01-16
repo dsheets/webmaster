@@ -40,5 +40,5 @@ let relativize_file ~root in_file out_file = Urlfun.(
 
 let relativize ({ force }) root (_output_links,output) (_path_links,path) =
   let cmd = "relativize" in
-  let process = relativize_file ~root in
+  let process _file = relativize_file ~root in
   output_of_input ~force ~cmd process path output
